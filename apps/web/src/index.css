@@ -1,0 +1,134 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply scroll-smooth;
+  }
+
+  /* Animasi masuk halaman login (aurora/premium). */
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(22px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  .rise {
+    animation: rise 0.8s cubic-bezier(0.2, 0.7, 0.25, 1) both;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .rise {
+      animation: none;
+    }
+  }
+  /* Skema warna native (select dropdown, date picker, scrollbar) ikut tema —
+     tanpa ini popup dropdown tampil terang saat teks form putih (tak terbaca). */
+  :root {
+    color-scheme: light;
+  }
+  .dark {
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-slate-100 font-sans text-slate-800 antialiased dark:bg-ink-900 dark:text-slate-200;
+  }
+  /* Aturan eksplisit untuk <option> — popup mengabaikan color-scheme di
+     sebagian browser Android/desktop. */
+  select option {
+    background-color: #ffffff;
+    color: #0f172a;
+  }
+  .dark select option {
+    background-color: #0f1e33;
+    color: #e2e8f0;
+  }
+  ::selection {
+    @apply bg-brand-500/30;
+  }
+}
+
+@layer components {
+  /* Latar futuristik: grid halus + glow biru & emas. */
+  .bg-scene {
+    @apply relative min-h-screen overflow-x-clip;
+    background-image:
+      radial-gradient(42rem 22rem at 85% -5%, rgba(255, 197, 61, 0.12), transparent 60%),
+      radial-gradient(54rem 30rem at 10% 0%, rgba(27, 127, 224, 0.16), transparent 60%),
+      linear-gradient(rgba(27, 127, 224, 0.055) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(27, 127, 224, 0.055) 1px, transparent 1px);
+    background-size:
+      auto,
+      auto,
+      44px 44px,
+      44px 44px;
+  }
+  .dark .bg-scene {
+    background-image:
+      radial-gradient(42rem 22rem at 85% -5%, rgba(255, 197, 61, 0.1), transparent 60%),
+      radial-gradient(54rem 30rem at 10% 0%, rgba(27, 127, 224, 0.28), transparent 62%),
+      linear-gradient(rgba(125, 180, 247, 0.07) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(125, 180, 247, 0.07) 1px, transparent 1px);
+  }
+
+  /* Kartu kaca (glassmorphism). */
+  .glass {
+    @apply rounded-2xl border border-slate-200/80 bg-white/85 shadow-xl shadow-slate-900/5 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04] dark:shadow-black/30;
+  }
+
+  .text-gradient {
+    @apply bg-gradient-to-r from-brand-400 via-brand-500 to-gold-400 bg-clip-text text-transparent;
+  }
+
+  .input-base {
+    @apply w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 dark:border-white/10 dark:bg-white/5 dark:text-slate-100 dark:placeholder:text-slate-500;
+  }
+}
+
+/* Scrollbar ramping. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply rounded-full bg-slate-300 dark:bg-white/15;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-brand-400;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ===== Cetak (mis. Pratinjau Ujian) ===== */
+@media print {
+  body {
+    background: #ffffff !important;
+  }
+  .glass {
+    background: #ffffff !important;
+    color: #111827 !important;
+    border-color: #e5e7eb !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+  }
+  .glass * {
+    color: #111827 !important;
+  }
+  .bg-scene {
+    background: #ffffff !important;
+  }
+}

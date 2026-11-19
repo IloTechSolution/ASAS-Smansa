@@ -1,0 +1,401 @@
+// Schema database CBT SMAN 1 & SMAN 8 Gorontalo (multi-sekolah).
+// Fase 0: seluruh model inti dibuat di awal agar migrasi berikutnya kecil.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model School {
+  id             String   @id // 'sman1' | 'sman8' (seed) atau cuid
+  slug           String   @unique // dipakai di header konfigurasi & file branding
+  name           String   // mis. "SMAN 1 Gorontalo"
+  appName        String   // mis. "CBT SMAN 1 Gorontalo"
+  headmasterName String? // cetak di Kartu Login
+  headmasterNip  String?
+  logoPath       String? // key relatif uploadsRoot, mis. "branding/<id>/logo.jpeg"
+  ttdPath        String? // key relatif uploadsRoot, ttd kepala sekolah (png)
+  stampPath      String? // key relatif uploadsRoot, stempel sekolah (png)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  users         User[]
+  kelas         Kelas[]
+  mapel         Mapel[]
+  questions     Question[]
+  exams         Exam[]
+  examQuestions ExamQuestion[]
+  enrollments   ExamEnrollment[]
+  sessions      ExamSession[]
+  attempts      Attempt[]
+  answers       AttemptAnswer[]
+  integrityLogs IntegrityLog[]
+  tokenAudits   TokenAudit[]
+  attendances   Attendance[]
+  configs       GlobalConfig[]
+  auditLogs     AuditLog[]
+}
+
+enum Role {
+  ADMIN
+  GURU
+  SISWA
+  PROKTOR
+}
+
+enum QuestionType {
+  PG
+  PG_KOMPLEKS
+  MATCHING
+  BENAR_SALAH
+  ISIAN_SINGKAT
+}
+
+enum ScoringMode {
+  ALL_OR_NOTHING
+  PROPORSIONAL
+}
+
+enum AttemptStatus {
+  IN_PROGRESS
+  SUBMITTED
+  EXPIRED
+  FORCE_SUBMITTED
+}
+
+enum SessionStatus {
+  DRAFT
+  SCHEDULED
+  ACTIVE
+  CLOSED
+}
+
+enum IntegrityType {
+  TAB_SWITCH
+  FULLSCREEN_EXIT
+  WINDOW_BLUR
+  COPY_ATTEMPT
+  PASTE_ATTEMPT
+  CONTEXT_MENU
+  SEB_MISSING
+  DEVTOOLS_OPEN
+  OTHER
+}
+
+enum AttendanceStatus {
+  HADIR
+  TERLAMBAT
+  IZIN
+  SAKIT
+  ALPA
+}
+
+model User {
+  id              String   @id @default(cuid())
+  username        String   @unique // NISN untuk siswa, username untuk staf
+  password        String // hash bcrypt
+  initialPassword String? // snapshot password awal (dicetak di Kartu Login; hanya untuk cetak)
+  name            String
+  role            Role
+  nisn            String?  @unique
+  /// Ruang ujian per siswa (teks/angka bebas) — informasi, bukan penentu peserta.
+  ruang           String?
+  photoUrl        String?
+  schoolId        String
+  school          School   @relation(fields: [schoolId], references: [id])
+  kelasId         String?
+  kelas           Kelas?   @relation(fields: [kelasId], references: [id])
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  createdQuestions   Question[]      @relation("CreatedQuestions")
+  createdExams       Exam[]          @relation("CreatedExams")
+  enrollments        ExamEnrollment[]
+  attempts           Attempt[]
+  attendances        Attendance[]
+  auditLogs          AuditLog[]
+  releasedTokens     TokenAudit[]    @relation("ReleasedTokens")
+  checkedAttendances Attendance[]    @relation("CheckedAttendances")
+  reviewedAnswers    AttemptAnswer[] @relation("ReviewedAnswers")
+
+  @@index([schoolId])
+}
+
+model Kelas {
+  id          String   @id @default(cuid())
+  name        String // unik per sekolah
+  tingkat     String? // X / XI / XII
+  tahunAjaran String // mis. "2026/2027"
+  ruang       String? // ruang ujian, mis. "20" — dicetak di Kartu Login
+  schoolId    String
+  school      School   @relation(fields: [schoolId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users       User[]
+  sessionLinks SessionKelas[]
+
+  @@unique([schoolId, name])
+}
+
+model Mapel {
+  id        String   @id @default(cuid())
+  name      String // unik per sekolah
+  code      String? // unik per sekolah
+  kkm       Float    @default(75) // kriteria ketuntasan minimal — diatur guru mapel
+  schoolId  String
+  school    School   @relation(fields: [schoolId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  exams Exam[]
+
+  @@unique([schoolId, name])
+  @@unique([schoolId, code])
+}
+
+model Question {
+  id              String       @id @default(cuid())
+  type            QuestionType
+  content         String // teks/markdown soal
+  imageUrl        String?
+  weight          Float        @default(1) // bobot (diatur guru)
+  scoringMode     ScoringMode  @default(ALL_OR_NOTHING) // untuk PG_KOMPLEKS/MATCHING/BENAR_SALAH
+  choices         Json? // PG & PG_KOMPLEKS: [{id,label,imageUrl?}]
+  correctChoices  Json? // PG & PG_KOMPLEKS: [choiceId,...]
+  pairs           Json? // MATCHING: {left:[{id,text}], right:[{id,text}], mapping:{leftId:rightId}}
+  statements      Json? // BENAR_SALAH: [{id,text,answer:boolean}]
+  acceptedAnswers Json? // ISIAN_SINGKAT: [string,...] (dicocokkan case-insensitive)
+  explanation     String? // pembahasan (tampil setelah publish)
+  schoolId        String
+  school          School   @relation(fields: [schoolId], references: [id])
+  createdById     String
+  createdBy       User         @relation("CreatedQuestions", fields: [createdById], references: [id])
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  examLinks ExamQuestion[]
+  answers   AttemptAnswer[]
+
+  @@index([schoolId])
+}
+
+model Exam {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  mapelId     String
+  mapel       Mapel    @relation(fields: [mapelId], references: [id])
+  schoolId    String
+  school      School   @relation(fields: [schoolId], references: [id])
+  createdById String
+  createdBy   User     @relation("CreatedExams", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  enrollments ExamEnrollment[]
+  questions ExamQuestion[]
+  sessions  ExamSession[]
+
+  @@index([schoolId])
+}
+
+model ExamEnrollment {
+  examId    String
+  exam      Exam   @relation(fields: [examId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  schoolId  String
+  school    School @relation(fields: [schoolId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@id([examId, userId])
+  @@index([userId])
+  @@index([schoolId])
+}
+
+model ExamQuestion {
+  examId     String
+  exam       Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  schoolId   String
+  school     School   @relation(fields: [schoolId], references: [id])
+  order      Int      @default(0)
+
+  @@id([examId, questionId])
+  @@index([schoolId])
+}
+
+model ExamSession {
+  id                String        @id @default(cuid())
+  examId            String
+  exam              Exam          @relation(fields: [examId], references: [id])
+  title             String? // mis. "UTS Ganjil — XII IPA 1"
+  status            SessionStatus @default(DRAFT)
+  // Hari pelaksanaan (Senin–Jumat) — menggantikan jadwal tanggal+jam (15 Nov 2026).
+  hariPelaksanaan   String?
+  // Tampil di "Ujian Saya" siswa + token boleh dirilis. Menggantikan alur status.
+  visibleToSiswa    Boolean       @default(false)
+  startsAt          DateTime?
+  endsAt            DateTime?
+  durationMin       Int
+  tokenSecret       String // Base32 — bahan token 6-digit rotating
+  tokenIntervalSec  Int           @default(120)
+  maxViolations     Int           @default(3)
+  requireSeb        Boolean       @default(false)
+  shuffleQuestions  Boolean       @default(true)
+  shuffleOptions    Boolean       @default(true)
+  resultsPublished  Boolean       @default(false)
+  schoolId          String
+  school            School        @relation(fields: [schoolId], references: [id])
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  kelasLinks      SessionKelas[]
+  attempts        Attempt[]
+  tokenAudits     TokenAudit[]
+  attendances     Attendance[]
+
+  @@index([schoolId])
+}
+
+model SessionKelas {
+  sessionId String
+  session   ExamSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  kelasId   String
+  kelas     Kelas       @relation(fields: [kelasId], references: [id], onDelete: Cascade)
+
+  @@id([sessionId, kelasId])
+}
+
+model Attempt {
+  id             String        @id @default(cuid())
+  sessionId      String
+  session        ExamSession   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startedAt      DateTime      @default(now())
+  expiresAt      DateTime // server-authoritative: startedAt + durasi (+extend proktor)
+  submittedAt    DateTime?
+  status         AttemptStatus @default(IN_PROGRESS)
+  score          Float?
+  violationCount Int           @default(0)
+  lockedAt       DateTime? // diisi saat batas pelanggaran terlampaui — attempt dikunci, jawaban tetap; buka dengan token proktor
+  ip             String?
+  userAgent      String?
+  sebVerified    Boolean       @default(false)
+  schoolId       String
+  school         School        @relation(fields: [schoolId], references: [id])
+
+  answers        AttemptAnswer[]
+  integrityLogs  IntegrityLog[]
+
+  @@unique([sessionId, userId])
+  @@index([sessionId, status])
+  @@index([schoolId])
+}
+
+model AttemptAnswer {
+  id           String   @id @default(cuid())
+  attemptId    String
+  attempt      Attempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  questionId   String
+  question     Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  payload      Json // jawaban siswa (format tergantung tipe soal)
+  isFlagged    Boolean  @default(false) // "ragu-ragu"
+  isCorrect    Boolean?
+  score        Float? // skor auto (bobot x rasio)
+  reviewedScore Float? // override manual guru
+  reviewedById String?
+  reviewedBy   User?    @relation("ReviewedAnswers", fields: [reviewedById], references: [id])
+  reviewNote   String?
+  schoolId     String
+  school       School   @relation(fields: [schoolId], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([attemptId, questionId])
+  @@index([schoolId])
+}
+
+model IntegrityLog {
+  id        String        @id @default(cuid())
+  attemptId String
+  attempt   Attempt       @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  type      IntegrityType
+  detail    Json?
+  schoolId  String
+  school    School       @relation(fields: [schoolId], references: [id])
+  createdAt DateTime     @default(now())
+
+  @@index([attemptId])
+  @@index([schoolId])
+}
+
+model TokenAudit {
+  id           String      @id @default(cuid())
+  sessionId    String
+  session      ExamSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  releasedById String
+  releasedBy   User        @relation("ReleasedTokens", fields: [releasedById], references: [id])
+  releasedAt   DateTime    @default(now())
+  intervalSec  Int
+  tokenValue   String // token yang tampil saat dirilis (audit)
+  note         String?
+  schoolId     String
+  school       School    @relation(fields: [schoolId], references: [id])
+
+  @@index([schoolId])
+}
+
+model Attendance {
+  id           String           @id @default(cuid())
+  sessionId    String
+  session      ExamSession      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status       AttendanceStatus @default(HADIR)
+  checkedInAt  DateTime?
+  checkedInById String?
+  checkedInBy  User?            @relation("CheckedAttendances", fields: [checkedInById], references: [id])
+  note         String?
+  schoolId     String
+  school       School           @relation(fields: [schoolId], references: [id])
+
+  @@unique([sessionId, userId])
+  @@index([schoolId])
+}
+
+model GlobalConfig {
+  schoolId  String
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  key       String
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@id([schoolId, key])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  actor     User?    @relation(fields: [actorId], references: [id])
+  action    String // mis. "QUESTION_CREATE"
+  entity    String? // mis. "Question"
+  entityId  String?
+  meta      Json?
+  schoolId  String? // null = lintas sekolah/sistem
+  school    School?  @relation(fields: [schoolId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@index([actorId])
+  @@index([createdAt])
+  @@index([schoolId])
+}

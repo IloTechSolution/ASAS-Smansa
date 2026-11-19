@@ -1,0 +1,6 @@
+{
+  "name": "@cbt/seb-android",
+  "version": "2.1.1",
+  "private": true,
+  "description": "APK kiosk SEB SMAN 1 Gorontalo (Flutter) — tidak dieksekusi lewat npm; package.json ini hanya penanda workspace agar npm tidak komplain. Lihat apps/seb-android/README atau docs/SEB-ANDROID.md."
+}

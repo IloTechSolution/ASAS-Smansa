@@ -1,0 +1,29 @@
+{
+  "name": "@cbt/shared",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Enum, tipe, dan schema validasi bersama API + Web CBT SMAN 1 Gorontalo",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/esm/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.esm.json && node -e \"const fs=require('fs'),p=require('path');for(const f of fs.readdirSync('dist/esm')){const src=p.join('dist/esm',f);if(f.endsWith('.js'))fs.renameSync(src,src.replace(/\\.js$/,'.mjs'));else if(f.endsWith('.js.map'))fs.renameSync(src,src.replace(/\\.js\\.map$/,'.mjs.map'))}\"",
+    "dev": "tsc -p tsconfig.json --watch"
+  },
+  "dependencies": {
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4"
+  }
+}

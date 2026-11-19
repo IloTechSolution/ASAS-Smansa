@@ -1,0 +1,103 @@
+# CBT SMAN 1 Gorontalo — stack lengkap (PostgreSQL, Redis, API, Web).
+# Jalankan:  docker compose up -d --build
+# Buka:      http://localhost:8080
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: cbt-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-cbt}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cbt_dev_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-cbt}
+      TZ: ${TZ:-Asia/Makassar}
+    ports:
+      # Hanya loopback — jangan ekspos Postgres ke LAN dev (kredensial lemah).
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cbt} -d ${POSTGRES_DB:-cbt}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: cbt-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      # Hanya loopback — jangan ekspos Redis ke LAN dev.
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: cbt-api
+    restart: unless-stopped
+    environment:
+      # Nama host = nama service di compose (bukan localhost).
+      DATABASE_URL: postgresql://${POSTGRES_USER:-cbt}:${POSTGRES_PASSWORD:-cbt_dev_secret}@postgres:5432/${POSTGRES_DB:-cbt}?schema=public&connection_limit=30
+      REDIS_URL: redis://redis:6379
+      PORT: "3000"
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080}
+      JWT_SECRET: ${JWT_SECRET:-dev-only-change-me-to-min-32-random-chars!!}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+      TOKEN_DEFAULT_INTERVAL_SEC: ${TOKEN_DEFAULT_INTERVAL_SEC:-120}
+      UPLOAD_MAX_MB: ${UPLOAD_MAX_MB:-5}
+      LOGIN_MAX_FAILURES: ${LOGIN_MAX_FAILURES:-5}
+      LOGIN_WINDOW_SEC: ${LOGIN_WINDOW_SEC:-300}
+      SEB_BROWSER_EXAM_KEY: ${SEB_BROWSER_EXAM_KEY:-}
+      SEED_DEMO: ${SEED_DEMO:-true}
+      SEED_ADMIN_USERNAME: ${SEED_ADMIN_USERNAME:-admin}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
+      # Alamat CBT yang tercetak di QR Kartu Login (ganti dengan domain produksi).
+      WEB_URL: ${WEB_URL:-http://localhost:8080}
+      TZ: ${TZ:-Asia/Makassar}
+    expose:
+      - "3000"
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: cbt-web
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      api:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/healthz || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
+  redisdata:
+  uploads:

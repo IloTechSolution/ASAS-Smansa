@@ -1,0 +1,30 @@
+# Jangan kirim ke build context Docker.
+**/node_modules
+**/dist
+**/*.tsbuildinfo
+.git
+.gitignore
+.freebuff
+.opencode
+.env
+.env.*
+**/.env
+**/.env.*
+!**/.env.example
+/uploads
+/backups
+/deploy
+/docs
+/scripts
+/dist-seb
+/kartu*.pdf
+/Kartu*.pdf
+/nul
+/logo.png
+docker-compose*.yml
+*.log
+.DS_Store
+Thumbs.db
+
+# Hasil build APK (tidak ikut ke image Docker)
+/apps/seb-android

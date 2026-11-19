@@ -1,0 +1,117 @@
+# CBT SMAN 1 Gorontalo — stack PRODUKSI untuk VM Linux.
+#
+# Perbedaan penting dengan docker-compose.yml (dev):
+#   - PostgreSQL & Redis TIDAK dipublikasikan ke host (hanya jaringan Docker).
+#   - Web listen di port 80 (bisa diubah via WEB_PORT / WEB_BIND).
+#   - API tidak punya port host; hanya diakses nginx internal.
+#   - Nilai sensitif wajib diisi lewat .env.production (jangan pakai default dev).
+#
+# Pakai:
+#   cp deploy/env.production.example .env.production
+#   nano .env.production
+#   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+
+name: cbt-prod
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-cbt}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD wajib diisi di .env.production}
+      POSTGRES_DB: ${POSTGRES_DB:-cbt}
+      TZ: ${TZ:-Asia/Makassar}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cbt} -d ${POSTGRES_DB:-cbt}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    logging: *default-logging
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    logging: *default-logging
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    stop_grace_period: 30s
+    environment:
+      WEB_URL: ${WEB_URL:?WEB_URL wajib diisi di .env.production (alamat CBT publik, dipakai QR Kartu Login)}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-cbt}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-cbt}?schema=public&connection_limit=30
+      REDIS_URL: redis://redis:6379
+      PORT: "3000"
+      CORS_ORIGIN: ${CORS_ORIGIN:?CORS_ORIGIN wajib diisi (mis. http://192.168.1.50)}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET wajib diisi, minimal 32 karakter acak}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+      TOKEN_DEFAULT_INTERVAL_SEC: ${TOKEN_DEFAULT_INTERVAL_SEC:-120}
+      UPLOAD_MAX_MB: ${UPLOAD_MAX_MB:-5}
+      LOGIN_MAX_FAILURES: ${LOGIN_MAX_FAILURES:-5}
+      LOGIN_WINDOW_SEC: ${LOGIN_WINDOW_SEC:-300}
+      SEB_BROWSER_EXAM_KEY: ${SEB_BROWSER_EXAM_KEY:-}
+      SEED_DEMO: ${SEED_DEMO:-false}
+      SEED_ADMIN_USERNAME: ${SEED_ADMIN_USERNAME:-admin}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:?SEED_ADMIN_PASSWORD wajib diisi di .env.production}
+      INITIAL_PASSWORD_SECRET: ${INITIAL_PASSWORD_SECRET:-}
+      PIN_HASH_SECRET: ${PIN_HASH_SECRET:-}
+      DEFAULT_SCHOOL_SLUG: ${DEFAULT_SCHOOL_SLUG:-sman1}
+      TZ: ${TZ:-Asia/Makassar}
+    expose:
+      - "3000"
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    logging: *default-logging
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${WEB_BIND:-0.0.0.0}:${WEB_PORT:-80}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/healthz || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    logging: *default-logging
+
+volumes:
+  pgdata:
+  redisdata:
+  uploads:

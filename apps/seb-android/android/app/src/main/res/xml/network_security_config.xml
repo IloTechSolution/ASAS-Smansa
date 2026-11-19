@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Sekolah (sideload, BYOD, LAN lab): cleartext HTTP diizinkan agar server
+     via IP lokal bisa dibuka (mis. http://192.168.1.10:8080). Untuk produksi
+     publik, WAJIB HTTPS (Caddy) dan hapus izin ini. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

@@ -1,0 +1,65 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+build/
+*.tsbuildinfo
+
+# env (contoh aman di-commit, nilai nyata jangan)
+.env
+.env.*
+!.env.example
+
+# hasil backup produksi
+backups/
+
+# VM & image Ubuntu/VirtualBox (±12 GB — simpan di luar repo / object storage)
+deploy/vm/
+
+# artefak root yang bukan sumber (PII / duplikat / sampah Windows)
+/Kartu Login.pdf
+/kartu-login-yang di download.pdf
+/kartu-sample.pdf
+/kartu-*.pdf
+/nul
+/logo.png
+
+# uploads lokal (dev)
+apps/api/uploads/*
+!apps/api/uploads/.gitkeep
+
+# prisma
+# (client ter-generate di node_modules, tidak perlu di-ignore khusus)
+
+# logs & os
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+
+# vite / editor
+.vite/
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# playwright
+test-results/
+playwright-report/
+
+# tool state (bukan bagian proyek)
+.opencode/
+.freebuff/
+
+# APK SEB Android — secrets & outputs
+apps/seb-android/android/key.properties
+apps/seb-android/android/app/key.jks
+dist-seb/
+apps/seb-android/build/
+apps/seb-android/.dart_tool/
+apps/seb-android/.idea/
+apps/seb-android/android/.gradle/
+apps/seb-android/android/.kotlin/
+apps/seb-android/android/local.properties
+*.iml
