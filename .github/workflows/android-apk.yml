@@ -3,6 +3,9 @@ name: Build APK — SEB SMAN 1 Gorontalo
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
