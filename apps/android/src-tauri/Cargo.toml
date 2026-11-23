@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 tauri = { version = "2", features = ["devtools"] }
-reqwest = { version = "0.12", features = ["blocking", "json"] }
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
 serde_json = "1"
 
 [lib]
