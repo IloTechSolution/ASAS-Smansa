@@ -17,7 +17,6 @@ jobs:
         with:
           targets: aarch64-linux-android,armv7-linux-androideabi
 
-      - uses: android-actions/setup-android@v3
 
       - name: Install Tauri CLI
         run: cargo install tauri-cli --version '^2'
