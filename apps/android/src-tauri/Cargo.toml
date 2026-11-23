@@ -8,6 +8,10 @@ tauri = { version = "2", features = ["devtools"] }
 reqwest = { version = "0.12", features = ["blocking", "json"] }
 serde_json = "1"
 
+[lib]
+name = "app_lib"
+path = "src/lib.rs"
+
 [[bin]]
 name = "seb-sman1-gorontalo"
 path = "src/main.rs"
