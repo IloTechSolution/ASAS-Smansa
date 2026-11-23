@@ -15,3 +15,6 @@ path = "src/lib.rs"
 [[bin]]
 name = "seb-sman1-gorontalo"
 path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2" }
