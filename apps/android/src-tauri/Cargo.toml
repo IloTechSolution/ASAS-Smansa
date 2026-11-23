@@ -1,0 +1,13 @@
+[package]
+name = "seb-sman1-gorontalo"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tauri = { version = "2", features = ["devtools"] }
+reqwest = { version = "0.12", features = ["blocking", "json"] }
+serde_json = "1"
+
+[[bin]]
+name = "seb-sman1-gorontalo"
+path = "src/main.rs"

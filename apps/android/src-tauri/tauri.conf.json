@@ -1,0 +1,13 @@
+{
+  "$schema": "https://raw.githubusercontent.com/tauri-apps/tauri/dev/crates/tauri-cli/template/tauri.conf.json",
+  "build": {
+    "frontendDist": "../frontend"
+  },
+  "tauri": {
+    "app": {
+      "identifier": "org.sma1gorontalo.seb",
+      "name": "SEB SMAN 1 Gorontalo",
+      "version": "0.1.0"
+    }
+  }
+}

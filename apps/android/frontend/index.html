@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Login — SEB SMAN 1 Gorontalo</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 360px; margin: 12vh auto; padding: 1rem; }
+    label { display: block; margin: .8rem 0; }
+    input, button { width: 100%; padding: .6rem; box-sizing: border-box; }
+  </style>
+</head>
+<body>
+  <h1>SEB SMAN 1 Gorontalo</h1>
+  <form id="login" onsubmit="doLogin(event)">
+    <label>Username / NISN
+      <input id="username" required autocomplete="username" />
+    </label>
+    <label>Password
+      <input id="password" type="password" required autocomplete="current-password" />
+    </label>
+    <button type="submit">Login</button>
+  </form>
+  <script>
+    async function doLogin(event) {
+      event.preventDefault();
+      const invoke = window.__TAURI_INTERNALS__?.invoke;
+      if (!invoke) { alert('Jalankan di aplikasi SEB SMAN 1 Gorontalo'); return; }
+      try {
+        const url = new URL('/api/auth/login', location.href).toString();
+        const hash = await window.SebBridge.requestHash(url);
+        await invoke('login', {
+          username: document.getElementById('username').value,
+          password: document.getElementById('password').value,
+          sebHash: hash,
+        });
+        alert('Login berhasil');
+        // TODO: arahkan ke halaman ujian
+      } catch (e) { alert(String(e)); }
+    }
+  </script>
+  <script>
+    // Jembatan SEB yang diharapkan web CBT (apps/web/src/lib/seb.ts).
+    // BEK HARUS sama dengan env server API `SEB_BROWSER_EXAM_KEY`.
+    // Injeksikan saat build dari GitHub Secret (jangan hardcode kunci produksi).
+    const BEK = 'GANTI_DENGAN_SEB_BROWSER_EXAM_KEY';
+    window.SebBridge = {
+      async requestHash(url) {
+        const bytes = new TextEncoder().encode(String(url) + BEK);
+        const digest = await crypto.subtle.digest('SHA-256', bytes);
+        return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+      },
+      alarm: (reason) => window.__TAURI_INTERNALS__?.invoke('seb_alarm', { reason }),
+      maximizeVolume: () => window.__TAURI_INTERNALS__?.invoke('seb_maximize_volume'),
+    };
+  </script>
+</body>
+</html>

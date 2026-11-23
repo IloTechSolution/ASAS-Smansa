@@ -1,0 +1,49 @@
+name: Build APK — SEB SMAN 1 Gorontalo
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --version '^2'
+
+      - name: Init Android project
+        run: cd src-tauri && cargo tauri android init
+
+      - name: Inject BEK from GitHub Secret
+        env:
+          SEB_BROWSER_EXAM_KEY: ${{ secrets.SEB_BROWSER_EXAM_KEY }}
+        run: |
+          sed -i "s|GANTI_DENGAN_SEB_BROWSER_EXAM_KEY|$SEB_BROWSER_EXAM_KEY|" frontend/index.html
+
+      - name: Build APK (debug/universal)
+        run: cd src-tauri && cargo tauri android build --debug
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: seb-sman1-gorontalo-apk
+          path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v0.1.0
+          files: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          generate_release_notes: true
