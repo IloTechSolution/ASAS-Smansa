@@ -3,9 +3,22 @@
   "productName": "SEB SMAN 1 Gorontalo",
   "version": "0.1.0",
   "identifier": "org.sma1gorontalo.seb",
-  "build": { "frontendDist": "../frontend" },
+  "build": {
+    "frontendDist": "../frontend"
+  },
   "app": {
-    "windows": [{ "title": "SEB SMAN 1 Gorontalo" }],
-    "security": { "csp": null }
+    "windows": [
+      {
+        "title": "SEB SMAN 1 Gorontalo"
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "icon": [
+      "icons/icon.png"
+    ]
   }
 }
