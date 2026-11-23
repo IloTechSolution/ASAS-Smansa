@@ -37,12 +37,12 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: seb-sman1-gorontalo-apk
-          path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          path: apps/android/src-tauri/gen/android/app/build/outputs/apk/**/*.apk
           if-no-files-found: error
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v0.1.0
-          files: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          files: apps/android/src-tauri/gen/android/app/build/outputs/apk/**/*.apk
           generate_release_notes: true
